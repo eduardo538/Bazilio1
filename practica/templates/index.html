@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generador y Reproductor</title>
+    <script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.2/dist/abcjs-basic.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/abcjs@6.2.2/dist/abcjs-basic.css">
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-hover: #0284c7;
+            --btn-play: #10b981;
+            --btn-play-hover: #059669;
+            --btn-stop: #ef4444;
+            --btn-stop-hover: #dc2626;
+            --btn-secondary: #475569;
+            --btn-secondary-hover: #334155;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+        }
+
+        h1 { 
+            font-size: 24px; 
+            margin-top: 0; 
+            color: var(--accent-primary); 
+            text-align: center;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        textarea {
+            width: 100%;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 12px;
+            margin-top: 8px;
+            background: var(--bg-color);
+            color: var(--accent-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            height: 110px;
+            text-transform: uppercase;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .guide {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .note-box {
+            background: var(--bg-color);
+            padding: 10px 4px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .note-box:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-primary);
+        }
+
+        .note-box b { 
+            display: block; 
+            color: var(--accent-primary); 
+            font-size: 16px; 
+            margin-bottom: 4px;
+        }
+
+        .output {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: #a7f3d0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .controls-row {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .controls-row input {
+            width: 90px;
+            padding: 8px;
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        button {
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:active { transform: translateY(1px); }
+        button:disabled { 
+            background: var(--border-color) !important; 
+            color: var(--text-muted);
+            cursor: not-allowed; 
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn-create { 
+            background: var(--accent-primary); 
+            grid-column: span 2; 
+            font-size: 16px;
+            padding: 15px;
+            color: var(--bg-color);
+        }
+        .btn-create:hover:not(:disabled) { background: var(--accent-hover); color: white; }
+        
+        .btn-play { background: var(--btn-play); }
+        .btn-play:hover:not(:disabled) { background: var(--btn-play-hover); }
+        
+        .btn-stop { background: var(--btn-stop); }
+        .btn-stop:hover:not(:disabled) { background: var(--btn-stop-hover); }
+        
+        .btn-secondary { background: var(--btn-secondary); }
+        .btn-secondary:hover:not(:disabled) { background: var(--btn-secondary-hover); }
+
+        #paper { 
+            background: #ffffff; 
+            color: #000000; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+            border: 2px solid var(--accent-primary); 
+            overflow-x: auto; 
+        }
+
+        #paper * {
+            color: #000000;
+            fill: #000000;
+        }
+
+        @media print {
+            body { 
+                background: white; 
+                color: black; 
+            }
+            body * { visibility: hidden; }
+            #paper, #paper * { 
+                visibility: visible; 
+                color: black; 
+                fill: black; 
+            }
+            #paper {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none;
+                box-shadow: none;
+                background: white;
+                margin: 0;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Bazilio</h1>
+        <p style="font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 20px;">Escribe tus notas (de la A a la G):</p>
+        
+        <div class="guide">
+            <div class="note-box"><b>C</b>Do</div>
+            <div class="note-box"><b>D</b>Ré</div>
+            <div class="note-box"><b>E</b>Mi</div>
+            <div class="note-box"><b>F</b>Fa</div>
+            <div class="note-box"><b>G</b>Sol</div>
+            <div class="note-box"><b>A</b>La</div>
+            <div class="note-box"><b>B</b>Si</div>
+        </div>
+
+        <label for="notesInput" style="font-weight: bold; font-size: 14px; color: var(--accent-primary);">Secuencia de notas:</label>
+        <textarea id="notesInput">C4 D4 E4 C4 B3 A3 C4 C4</textarea>
+
+        <div class="controls-row">
+            <label for="bpmInput" style="font-weight: bold;">Velocidad (BPM):</label>
+            <input type="number" id="bpmInput" value="120" min="40" max="240">
+        </div>
+
+        <div class="btn-group">
+            <button id="createBtn" class="btn-create">Crear Archivos</button>
+        </div>
+
+        <label style="font-weight: bold; font-size: 14px; margin-top: 20px; display: block; color: var(--accent-primary);">Equivalencia en Solfeo:</label>
+        <div id="resultOutput" class="output">Haz clic en "Crear Archivos" para procesar...</div>
+
+        <div id="paper"></div>
+
+        <div class="btn-group">
+            <button id="playBtn" class="btn-play" disabled>Reproducir</button>
+            <button id="stopBtn" class="btn-stop" disabled>Reiniciar</button>
+        </div>
+
+        <div class="btn-group" id="downloadGroup" style="opacity: 0.6; pointer-events: none;">
+            <button id="downloadBzlBtn" class="btn-secondary" disabled>Descargar .bzl</button>
+            <button id="downloadLyBtn" class="btn-secondary" disabled>Descargar .ly</button>
+            <button id="downloadMidiBtn" class="btn-secondary" disabled>Descargar .midi</button>
+            <button id="downloadMp3Btn" class="btn-secondary" disabled>Descargar .mp3</button>
+            <button id="downloadPdfBtn" class="btn-secondary" style="grid-column: span 2;" disabled>Descargar .pdf (Partitura)</button>
+        </div>
+    </div>
+
+    <script>
+        const equivalencias = {'C': 'Do', 'D': 'Ré', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si'};
+        const frecuencias = {'C': 261.63, 'D': 293.66, 'E': 329.63, 'F': 349.23, 'G': 392.00, 'A': 440.00, 'B': 493.88};
+
+        const notesInput = document.getElementById("notesInput");
+        const resultOutput = document.getElementById("resultOutput");
+        const bpmInput = document.getElementById("bpmInput");
+        const createBtn = document.getElementById("createBtn");
+        const playBtn = document.getElementById("playBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const downloadGroup = document.getElementById("downloadGroup");
+
+        let visualObj = null;
+        let audioCtx = null;
+        let activeSources = [];
+
+        function procesarNotas() {
+            const texto = notesInput.value.toUpperCase();
+            const tokens = texto.match(/[A-G][0-8]?/g);
+            return tokens || [];
+        }
+
+        function obtenerABCString() {
+            const tokens = procesarNotas();
+            const bpm = bpmInput.value || 120;
+            const abcNotes = tokens.map(t => {
+                let nota = t[0].toLowerCase();
+                let oct = t.slice(1) || "4";
+                if (oct > 4) nota += "'".repeat(oct - 4);
+                if (oct < 4) nota += ",".repeat(4 - oct);
+                return nota;
+            }).join(" ");
+
+            return `X:1\nT:Melodia Bazilio\nM:4/4\nQ:1/4=${bpm}\nL:1/4\nK:C\n${abcNotes}`;
+        }
+
+        function detenerAudio() {
+            activeSources.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            activeSources = [];
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
+            }
+        }
+
+        function crearSonidoPiano(ctx, freq, tiempo, duracion, destino) {
+            const osc1 = ctx.createOscillator();
+            osc1.type = "sine";
+            osc1.frequency.setValueAtTime(freq, tiempo);
+
+            const osc2 = ctx.createOscillator();
+            osc2.type = "triangle";
+            osc2.frequency.setValueAtTime(freq, tiempo);
+
+            const filtro = ctx.createBiquadFilter();
+            filtro.type = "lowpass";
+            filtro.frequency.setValueAtTime(freq * 3, tiempo);
+            filtro.frequency.exponentialRampToValueAtTime(freq, tiempo + duracion);
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, tiempo);
+            gain.gain.linearRampToValueAtTime(0.6, tiempo + 0.015);
+            gain.gain.setTargetAtTime(0.1, tiempo + 0.02, 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.001, tiempo + duracion);
+
+            osc1.connect(filtro);
+            osc2.connect(filtro);
+            filtro.connect(gain);
+            gain.connect(destino);
+
+            osc1.start(tiempo);
+            osc2.start(tiempo);
+            osc1.stop(tiempo + duracion);
+            osc2.stop(tiempo + duracion);
+
+            return [osc1, osc2];
+        }
+
+        createBtn.onclick = () => {
+            detenerAudio();
+            const tokens = procesarNotas();
+            if (tokens.length === 0) {
+                alert("Escribe notas válidas (A, B, C, D, E, F, G).");
+                return;
+            }
+
+            const traducidas = tokens.map(token => {
+                const letra = token[0];
+                const octava = token.slice(1) || "4";
+                return `${equivalencias[letra] || letra}${octava}`;
+            });
+            resultOutput.textContent = traducidas.join(" - ");
+
+            const abcString = obtenerABCString();
+            const res = ABCJS.renderAbc("paper", abcString, { responsive: "resize" });
+            if (res && res.length > 0) {
+                visualObj = res[0];
+            }
+
+            playBtn.disabled = false;
+            stopBtn.disabled = false;
+            downloadGroup.style.opacity = "1";
+            downloadGroup.style.pointerEvents = "auto";
+            document.querySelectorAll("#downloadGroup button").forEach(b => b.disabled = false);
+        };
+
+        playBtn.onclick = () => {
+            detenerAudio();
+            const tokens = procesarNotas();
+            if (tokens.length === 0) return alert("Primero crea los archivos.");
+
+            const bpm = parseInt(bpmInput.value) || 120;
+            const duracionNota = 60 / bpm;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let tiempoActual = audioCtx.currentTime;
+
+            tokens.forEach(token => {
+                const letra = token[0];
+                const octavaStr = token.slice(1);
+                const octava = octavaStr ? parseInt(octavaStr) : 4;
+                
+                const freqBase = frecuencias[letra] || 440;
+                // Ajustamos la frecuencia real basándonos en la octava que el usuario escribió
+                const freq = freqBase * Math.pow(2, octava - 4);
+
+                const osciladores = crearSonidoPiano(audioCtx, freq, tiempoActual, duracionNota, audioCtx.destination);
+                activeSources.push(...osciladores);
+
+                tiempoActual += duracionNota;
+            });
+        };
+        
+        stopBtn.onclick = () => {
+            detenerAudio();
+        };
+
+        document.getElementById("downloadBzlBtn").onclick = () => {
+            const tokens = procesarNotas();
+            let codigoBzl = "Main |:\n";
+            tokens.forEach(nota => { codigoBzl += `    (:) ${nota}\n`; });
+            codigoBzl += ":|\n";
+            descargarArchivo(codigoBzl, "himno.bzl", "text/plain;charset=utf-8");
+        };
+
+        document.getElementById("downloadLyBtn").onclick = () => {
+            const tokens = procesarNotas();
+            let codigoLy = `\\version "2.24.0"\n\n\\header {\n  title = "Melodia Bazilio"\n}\n\n\\score {\n  \\relative c' {\n    \\tempo 4 = ${bpmInput.value}\n`;
+            tokens.forEach(nota => {
+                let n = nota[0].toLowerCase();
+                let oct = nota.slice(1) || "4";
+                if (oct > 4) n += "'".repeat(oct - 4);
+                else if (oct < 4) n += ",".repeat(4 - oct);
+                codigoLy += `    ${n}4\n`;
+            });
+            codigoLy += `  }\n  \\layout { }\n  \\midi { }\n}\n`;
+            descargarArchivo(codigoLy, "himno.ly", "text/plain;charset=utf-8");
+        };
+
+        document.getElementById("downloadMidiBtn").onclick = () => {
+            if (!visualObj) return alert("Crea los archivos primero.");
+            const midiBlob = ABCJS.synth.getMidiFile(visualObj, { download: true });
+            const blob = new Blob([midiBlob], { type: "audio/midi" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "himno.midi";
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        document.getElementById("downloadMp3Btn").onclick = async () => {
+            const tokens = procesarNotas();
+            if (tokens.length === 0) return;
+
+            const bpm = parseInt(bpmInput.value) || 120;
+            const duracionNota = 60 / bpm;
+            const sampleRate = 44100;
+            const totalDuracion = tokens.length * duracionNota + 0.5;
+
+            const offlineCtx = new OfflineAudioContext(1, sampleRate * totalDuracion, sampleRate);
+            let tiempo = 0;
+
+            tokens.forEach(token => {
+                const letra = token[0];
+                const octavaStr = token.slice(1);
+                const octava = octavaStr ? parseInt(octavaStr) : 4;
+                
+                const freqBase = frecuencias[letra] || 440;
+                const freq = freqBase * Math.pow(2, octava - 4);
+
+                crearSonidoPiano(offlineCtx, freq, tiempo, duracionNota, offlineCtx.destination);
+
+                tiempo += duracionNota;
+            });
+
+            const renderedBuffer = await offlineCtx.startRendering();
+            const channelData = renderedBuffer.getChannelData(0);
+
+            let samples = new Int16Array(channelData.length);
+            for (let i = 0; i < channelData.length; i++) {
+                let s = Math.max(-1, Math.min(1, channelData[i]));
+                samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+
+            const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+            const mp3Data = [];
+            const sampleBlockSize = 1152;
+
+            for (let i = 0; i < samples.length; i += sampleBlockSize) {
+                let sampleChunk = samples.subarray(i, i + sampleBlockSize);
+                let mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                if (mp3buf.length > 0) mp3Data.push(mp3buf);
+            }
+            let mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+            const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "himno.mp3";
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        document.getElementById("downloadPdfBtn").onclick = () => {
+            window.print();
+        };
+
+        function descargarArchivo(contenido, nombre, tipo) {
+            const blob = new Blob([contenido], { type: tipo });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nombre;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
